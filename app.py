@@ -1,21 +1,34 @@
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, make_response
+import uuid
 app = Flask(__name__)
-app.secret_key = "super-secret-key"
-@app.route('/', methods=['GET', 'POST'])
+
+
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        session['logged_in'] = True
-        return redirect(url_for('dashboard'))
+    cookie = request.cookies.get('token')
+    if (request.method == 'POST') or (cookie):
+        token = uuid.uuid4().hex
+        
+        resp = make_response(redirect(url_for('out')))
+        if not cookie:
+            resp.set_cookie('token', token)
+        return resp
+
     return render_template('login.html')
-@app.route('/dashboard')
-def dashboard():
-    if 'logged_in' in session and session['logged_in'] == True:
+
+@app.route('/out')
+def out():
+    cookie = request.cookies.get('token')
+    if cookie:
         return render_template('loggedout.html')
     else:
-        return redirect(url_for('login'))
+        return render_template('login.html')
+    
 @app.route('/logout')
 def logout():
-    session.pop('logged_in', None)
-    return redirect(url_for('login'))
+    resp = make_response(redirect(url_for('login')))
+    resp.set_cookie('token',expires=0)
+    return resp
+
 if __name__=='__main__':
     app.run(debug=True)
